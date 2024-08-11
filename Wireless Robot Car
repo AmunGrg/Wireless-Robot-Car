@@ -1,0 +1,72 @@
+import RPi.GPIO as GPIO
+import time
+import pygame
+import sys
+
+# Set up GPIO mode and pin numbers
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(21, GPIO.OUT)  # INA1
+GPIO.setup(23, GPIO.OUT)  # INA2
+GPIO.setup(33, GPIO.OUT)  # PWMA
+GPIO.setup(22, GPIO.OUT)  # INB1
+GPIO.setup(24, GPIO.OUT)  # INB2
+GPIO.setup(35, GPIO.OUT)  # PWMB
+
+# Set up PWM for controlling motor speed
+pwm_a = GPIO.PWM(33, 100)  # PWM frequency = 100Hz
+pwm_b = GPIO.PWM(35, 100)
+
+# Function to control both motors
+def set_motors(in1a, in2a, pwma, in1b, in2b, pwmb):
+    GPIO.output(21, in1a)
+    GPIO.output(23, in2a)
+    GPIO.output(22, in1b)
+    GPIO.output(24, in2b)
+    pwma.start(0)  # Start PWM with 0% duty cycle
+    pwmb.start(0)
+    pwma.ChangeDutyCycle(50)  # Set PWM to 50% for both motors
+    pwmb.ChangeDutyCycle(50)
+
+# Function to stop the robot's movement
+def stop_motors():
+    pwm_a.stop()
+    pwm_b.stop()
+    GPIO.output(21, GPIO.LOW)
+    GPIO.output(23, GPIO.LOW)
+    GPIO.output(22, GPIO.LOW)
+    GPIO.output(24, GPIO.LOW)
+
+# Main program
+try:
+    GPIO.setwarnings(False)
+    pygame.init()
+    pygame.display.set_mode((100, 100))
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_q):
+                running = False
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            set_motors(GPIO.LOW, GPIO.HIGH, pwm_a, GPIO.HIGH, GPIO.LOW, pwm_b)  # Move left
+        elif keys[pygame.K_RIGHT]:
+            set_motors(GPIO.HIGH, GPIO.LOW, pwm_a, GPIO.LOW, GPIO.HIGH, pwm_b)  # Move right
+        elif keys[pygame.K_UP]:
+            set_motors(GPIO.HIGH, GPIO.LOW, pwm_a, GPIO.HIGH, GPIO.LOW, pwm_b)  # Move forward
+        elif keys[pygame.K_DOWN]:
+            set_motors(GPIO.LOW, GPIO.HIGH, pwm_a, GPIO.LOW, GPIO.HIGH, pwm_b)  # Move backward
+        else:
+            stop_motors()  # Stop the robot if no key is pressed
+
+        time.sleep(0.1)  # Small delay to avoid excessive motor updates
+
+except KeyboardInterrupt:
+    pass
+finally:
+    stop_motors()  # Stop the motors before exiting
+    GPIO.cleanup()  # Clean up GPIO
+
+pygame.quit()
+sys.exit()
